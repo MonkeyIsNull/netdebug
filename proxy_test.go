@@ -117,7 +117,7 @@ func TestParseExtraDefaultRoutes(t *testing.T) {
 
 func TestDetectVPNFalsePositive(t *testing.T) {
 	tuns := []string{"utun0", "utun1", "utun2", "utun3", "utun4", "utun5", "utun6", "utun7"}
-	v4 := parseExtraDefaultRoutes(netstatV4, "inet") // v4 default on en0
+	v4 := parseExtraDefaultRoutes(netstatV4, "inet")  // v4 default on en0
 	v6 := parseExtraDefaultRoutes(netstatV6, "inet6") // only fe80::%utunN
 	vpn, detail := detectVPN(tuns, v4, v6, "en0")
 	if vpn {

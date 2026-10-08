@@ -215,9 +215,9 @@ func TestSummarize(t *testing.T) {
 
 func TestSummarizeSkipsInvalid(t *testing.T) {
 	samples := []SignalSample{
-		{OK: false},                   // failed poll — must be ignored
+		{OK: false}, // failed poll — must be ignored
 		{OK: true, RSSI: -50, SNR: 40},
-		{OK: false, RSSI: 0},          // zero must not become the "strongest"
+		{OK: false, RSSI: 0}, // zero must not become the "strongest"
 		{OK: true, RSSI: -48, SNR: 42},
 	}
 	st := summarize(samples)

@@ -21,10 +21,10 @@ Ethernet Address: 02:00:5e:10:00:01
 
 func TestParseNetworksetupSSID(t *testing.T) {
 	cases := map[string]string{
-		"Current Wi-Fi Network: MyNetwork\n":                     "MyNetwork",
-		"Current Wi-Fi Network: MyNetwork-5G\n":               "MyNetwork-5G",
+		"Current Wi-Fi Network: MyNetwork\n":                "MyNetwork",
+		"Current Wi-Fi Network: MyNetwork-5G\n":             "MyNetwork-5G",
 		"You are not associated with an AirPort network.\n": "",
-		"":                                                  "",
+		"": "",
 	}
 	for in, want := range cases {
 		if got := parseNetworksetupSSID(in); got != want {

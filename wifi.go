@@ -32,9 +32,9 @@ func parseInterface(out string) string {
 
 // currentNetwork returns the SSID the interface is joined to, using a fallback
 // chain because no single macOS command is reliable across OS versions:
-//   1. networksetup -getairportnetwork   (often empty on Sonoma+)
-//   2. ipconfig getsummary               (usually still has the SSID)
-//   3. system_profiler SPAirPortDataType (network name under Current Network)
+//  1. networksetup -getairportnetwork   (often empty on Sonoma+)
+//  2. ipconfig getsummary               (usually still has the SSID)
+//  3. system_profiler SPAirPortDataType (network name under Current Network)
 func currentNetwork(iface string) string {
 	if out, err := exec.Command("networksetup", "-getairportnetwork", iface).Output(); err == nil {
 		if s := parseNetworksetupSSID(string(out)); usableSSID(s) {

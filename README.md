@@ -1,37 +1,33 @@
 # netdebug
 
-Continuous, no-sudo, self-contained Wi-Fi and network diagnostics for macOS
-(Apple Silicon). Point it at your Mac and it serves a live dashboard on
-`127.0.0.1` that watches throughput, link quality, reachability, airspace, and
-per-process talkers — and keeps a persistent history so you can see *when* and
-*why* things went wrong.
+[![CI](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml/badge.svg)](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/MonkeyIsNull/netdebug)](https://goreportcard.com/report/github.com/MonkeyIsNull/netdebug)
+![Go version](https://img.shields.io/github/go-mod/go-version/MonkeyIsNull/netdebug)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Platform: macOS (Apple Silicon)](https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-lightgrey.svg)
 
-**Why it exists.** Most network troubleshooting is a one-shot snapshot taken
-*after* you notice a problem. netdebug runs continuously and remembers, so the
-intermittent slowdown, the 2am drop, the band-steer that tanked your call all
-leave a trail. And it does this the boring, safe way:
+**See what your Mac's Wi-Fi and network are really doing — live, in your browser, with no sudo and no setup.**
 
-- **No sudo, ever.** It only shells sudo-free macOS tools (`system_profiler`,
-  `ifconfig`, `netstat`, `nettop`, `ps`, `lsof`, `ping`, `route`, `scutil`). It
-  never prompts for a password and never uses `wdutil`/`sudo` on the dashboard
-  path — which is exactly what lets the always-on launchd agent run with no TTY.
-- **Loopback only.** The server binds `127.0.0.1` *exclusively*, validated
-  before and after binding. There is no flag to expose it on a LAN.
-- **Self-contained.** One static Go binary, zero third-party dependencies
-  (stdlib only). The dashboard is a single document with inline SVG charts — no
-  CDN, no web fonts, no external requests of any kind.
-- **Read-only / observational.** It measures; it does not reconfigure your
-  network.
+Run one command and netdebug opens a dashboard on `127.0.0.1`. It watches your throughput, signal, reachability, the Wi-Fi airspace around you, and which apps are using the network — and it keeps a running history. So when something goes wrong (a slowdown, a 2am drop, the band-steer that tanked your call), you can see exactly *when* and *why* instead of guessing.
 
-macOS / Apple Silicon only.
+It's deliberately boring and safe:
+
+- **No sudo, ever.** netdebug only runs password-free macOS tools. It never asks for admin rights — which is also what lets it run quietly at login.
+- **Loopback only.** The dashboard is served on `127.0.0.1` and nowhere else. There's no option to put it on your network.
+- **One small binary, no dependencies.** Pure Go standard library. The dashboard is a single self-contained page — no CDN, no web fonts, no outside requests.
+- **Read-only.** It measures and reports. It never changes your network settings.
+
+macOS on Apple Silicon.
 
 ## Install
+
+Grab it with Go:
 
 ```sh
 go install github.com/MonkeyIsNull/netdebug@latest
 ```
 
-or build from source (no modules to download — it is stdlib-only):
+Or build from source (nothing to download — it's standard-library only):
 
 ```sh
 git clone https://github.com/MonkeyIsNull/netdebug
@@ -39,7 +35,7 @@ cd netdebug
 go build -o netdebug .
 ```
 
-Requires Go 1.26+.
+You'll need Go 1.26 or newer.
 
 ## Quick start
 
@@ -47,165 +43,110 @@ Requires Go 1.26+.
 ./netdebug --serve
 ```
 
-Then open **http://127.0.0.1:8099/**. If 8099 is busy the server auto-advances
-to the next free port and prints the real URL on startup. Ctrl-C to stop.
+Open **http://127.0.0.1:8099/** in your browser. If that port's taken, netdebug grabs the next free one and prints the real URL. Press Ctrl-C to stop.
 
 ![netdebug dashboard](docs/screenshots/dashboard.png)
 
-> **Screenshot slot.** `docs/screenshots/dashboard.png` is the intended
-> dashboard image. If you are reading this before it has been captured, the
-> image above is a placeholder — see [docs/screenshots/](docs/screenshots/) for
-> how to grab one from a running `--serve` (ideally with `--sample`/synthetic
-> data so no real SSIDs leak).
+> No screenshot yet? `docs/screenshots/dashboard.png` is the slot for it — see [docs/screenshots/](docs/screenshots/) for how to grab one from a running dashboard.
 
-## The dashboard
+## What the dashboard shows
 
-`--serve` is the centerpiece. It samples continuously and renders one live,
-self-contained page with these panels:
+The live dashboard (`--serve`) is the heart of netdebug. It refreshes every second and puts everything on one page:
 
-- **LIVE** — real-time up/down throughput (from `netstat -ibn` byte counters),
-  charted and colored by Wi-Fi band so a slowdown that coincides with a band
-  change is obvious at a glance.
-- **REACHABILITY** — rolling gateway + internet RTT, loss, jitter and DNS health
-  with a per-target drill-down table. Power-gated by default (pauses on battery
-  / locked screen to save power; override with `--no-power-gating`).
-- **HISTORY** — the persistent per-minute / per-hour history, so the chart
-  survives restarts and crashes.
-- **AIRSPACE** — neighboring Wi-Fi networks, per-channel occupancy and the
-  clearest 80 MHz block (a *passive* `system_profiler` read — never an active
-  scan, never sudo).
-- **OUTAGE JOURNAL** — timestamped records of real outages (debounced so a
-  single blip does not open one), with a best-effort cause classification.
-- **BAND / CHANNEL CHANGE (roam) JOURNAL** — timestamped band-steer / channel-
-  change events, the sibling of the outage journal.
-- **TOP TALKERS** — per-process up/down rates (sudo-free `nettop`), ranked
-  upstream-first; click a row to **drill into a process** (command, path,
-  parent, user and its current ESTABLISHED remote endpoints via `ps` + `lsof`).
-- **SPEED TEST** — an on-demand download/upload/latency test button
-  (speed.cloudflare.com), so you can measure without leaving the page.
+- **Live throughput** — your up/down speeds right now, colored by Wi-Fi band so a slowdown that lines up with a band change jumps out.
+- **Reachability** — gateway and internet round-trip time, packet loss, jitter, and DNS health, with a per-target breakdown. It pauses on battery or a locked screen to save power (turn that off with `--no-power-gating`).
+- **History** — a per-minute and per-hour chart that survives restarts, so you can scroll back through the day.
+- **Airspace** — the Wi-Fi networks around you, how crowded each channel is, and the clearest 80 MHz block to aim for. This is a passive read — netdebug never scans the air or knocks you off your channel.
+- **Outage journal** — a timestamped log of real outages (a single blip is filtered out), each with a best-guess cause.
+- **Band / channel change journal** — a timestamped log of every band-steer and channel hop, so "wait, when did I get moved to 2.4?" is a glance, not a mystery.
+- **Top talkers** — which apps are using the network, ranked by upload. Click one to see what it is and who it's talking to.
+- **Speed test** — a one-click download / upload / latency test, right from the page.
 
-Opt-in extras on the serve path:
+Two optional extras when you serve:
 
-- **`--alerts`** — native macOS notifications on drop / band-change / meeting-BAD
-  / sustained-upload (debounced; default off).
-- **`--throttle-watch`** — a 429-safe, bounded, spaced download sampler
-  (≤ ~2/hr) to catch peak-hour ISP throttling (default off).
+- `--alerts` — native macOS notifications when you drop, get band-steered, or your call quality tanks.
+- `--throttle-watch` — an occasional, rate-limit-friendly download sample to catch peak-hour ISP throttling.
 
-## Point-in-time probe & compare
+## Checking one network at a time
 
-Separate from the live dashboard, netdebug can run a one-shot layer-by-layer
-probe of whatever network you are on right now — walked bottom-up so the first
-failing layer *is* the diagnosis (DHCP → route → gateway → internet → DNS →
-HTTP/captive-portal). This path shells `ipconfig`, `route`, `netstat`, `ping`
-and `system_profiler` (and, if available, `wdutil` for fuller radio detail).
+Besides the live dashboard, netdebug can run a single bottom-up health check of whatever network you're on — DHCP → route → gateway → internet → DNS → web — and tell you the first thing that's broken (that's your problem):
 
 ```sh
-./netdebug                 # probe the current network; writes JSON to ./net-tests/
+./netdebug                 # check the current network; saves a report to ./net-tests/
 #   switch networks by hand in the macOS Wi-Fi menu
-./netdebug                 # probe the other one
-./netdebug --compare       # diff the two most recent reports, side by side
+./netdebug                 # check the other one
+./netdebug --compare       # put the two latest reports side by side
 ```
 
-The diagnosis names the first failing layer, e.g. *"NO UPSTREAM: gateway
-reachable but the internet is not — this SSID's uplink is down."* Add `--all`
-(or `--signal` / `--ipv6` / `--proxy` / `--extras`) for link-quality sampling,
-IPv6 health, proxy/VPN/route-hijack detection and ARP/MTU/DHCP-lease probes.
+The result names the first failing layer, for example: *"NO UPSTREAM: the gateway answers but the internet doesn't — this network's uplink is down."* Add `--all` (or `--signal` / `--ipv6` / `--proxy` / `--extras`) for signal sampling, IPv6 checks, VPN/proxy detection, and more.
 
-> `--live` (auto-switch between configured networks) exists but is unreliable on
-> recent macOS — `networksetup -setairportnetwork` often fails with CoreWLAN
-> `Error -3900`. Prefer the manual-switch + `--compare` workflow above.
+> There's a `--live` mode that switches networks for you, but recent macOS usually blocks it (CoreWLAN `Error -3900`), so switching by hand and using `--compare` is the reliable way.
 
-## One-shot modes
+## One-shot commands
 
-Each of these runs once and exits (no server):
+Each of these runs once, prints to your terminal, and exits — no server:
 
 ```sh
-./netdebug --sample          # print live up/down rates to the terminal
-./netdebug --speed           # download/upload/latency speed test
-./netdebug --bufferbloat     # latency-under-load (bufferbloat) grade A–F
-./netdebug --airspace        # neighbor list + channel occupancy + clearest block
-./netdebug --top-talkers     # per-process bandwidth, upstream-first
-./netdebug --proc <pid>      # identity + established connections for one PID
-./netdebug --status          # one-line health summary (reads a running --serve)
-./netdebug --report          # daily/weekly rollup from persisted history
+./netdebug --sample          # live up/down rates in the terminal
+./netdebug --speed           # download / upload / latency
+./netdebug --bufferbloat     # latency-under-load grade, A–F
+./netdebug --airspace        # neighbors, channel crowding, clearest block
+./netdebug --top-talkers     # per-app bandwidth, biggest uploader first
+./netdebug --proc <pid>      # what a process is and who it's connected to
+./netdebug --status          # one-line health summary (from a running --serve)
+./netdebug --report          # daily / weekly rollup from saved history
 ```
 
 See [examples/](examples/) for a fuller tour with sample output.
 
-## Always-on at login (per-user LaunchAgent)
+## Run it all day (login agent)
 
-For 24/7 logging, install a per-user **LaunchAgent** that runs `--serve` at every
-login. This is a *user* agent, **never** a system daemon — no root, your login
-session only, writes only to your own directories.
+Want netdebug always on? Install it as a per-user login agent — no root, just your own session:
 
 ```sh
-./netdebug --install-launchd                 # install + load now, and at every login
-./netdebug --install-launchd --port 9000     # bake in a specific port
-./netdebug --launchd-status                  # is it loaded / running / crash-looping?
-./netdebug --uninstall-launchd               # unload + remove it
+./netdebug --install-launchd                 # start now, and at every login
+./netdebug --install-launchd --port 9000     # pin a port
+./netdebug --launchd-status                  # is it running / crash-looping?
+./netdebug --uninstall-launchd               # remove it
 ```
 
-It writes `~/Library/LaunchAgents/com.cobenian.netdebug.plist` and `launchctl
-load -w`s it; logs go to `~/Library/Logs/netdebug/netdebug.log` (no rotation —
-truncate it yourself). Use the same `--launchd-label` for all three commands,
-and point it at a stable binary path (e.g. `/usr/local/bin/netdebug`) —
-`--install-launchd` refuses an obviously-ephemeral `go run` / translocated path.
+It installs to `~/Library/LaunchAgents/com.cobenian.netdebug.plist` and logs to `~/Library/Logs/netdebug/netdebug.log` (which doesn't rotate, so trim it now and then). Point it at a stable binary path like `/usr/local/bin/netdebug` — it will refuse a throwaway `go run` path on purpose.
 
-## History: where it lives and how long it is kept
+## Where history lives
 
-Samples fold into persistent buckets so the history chart survives restarts:
+netdebug folds samples into buckets on disk so your charts survive restarts:
 
 - **Location:** `~/Library/Application Support/netdebug/history`
-- **Retention:** per-minute buckets kept **48h**; per-hour buckets kept **90d**.
-- **Overrides:** `--history-dir /abs/path` on the command line, or `history_dir`
-  / `minute_ttl_hours` / `hour_ttl_days` in the config file.
+- **Kept for:** per-minute buckets 48 hours, per-hour buckets 90 days.
+- **Change it:** `--history-dir /abs/path`, or `history_dir` / `minute_ttl_hours` / `hour_ttl_days` in a config file.
 
-The outage and roam journals persist alongside the buckets as append-only JSONL.
+The outage and roam journals sit alongside as append-only JSONL.
 
-## Safety guarantees
+## The safety promises, in detail
 
-- **Loopback only.** The server binds `127.0.0.1` *exclusively*. The bind is
-  validated both before and after binding (the real socket address is
-  re-checked), so it can never land on `0.0.0.0`, `::`, or a LAN IP. There is no
-  flag to bind elsewhere — this is by design, not a default. Enforced by guard
-  tests (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
-- **No sudo, ever.** The dashboard reads the radio via `system_profiler` plus
-  `ifconfig`; it never shells `wdutil`/`sudo` and never prompts for a password.
-  Per-process **top talkers** read `nettop` the same way — it shows the processes
-  visible to your user, so some system processes may be unattributable; netdebug
-  degrades to an honest "unavailable" rather than escalating.
-- **Self-contained page.** The dashboard HTML has zero external URLs (no CDN, no
-  web font, no `<link>`, no `url()`), charts are inline SVG, and all free-form
-  strings are written via `textContent`, never `innerHTML`.
+- **Loopback only.** The server binds `127.0.0.1` and re-checks the real socket address after binding, so it can never end up on `0.0.0.0`, `::`, or your LAN. There's no flag to change that, and guard tests enforce it.
+- **No sudo.** It reads the radio with `system_profiler` and `ifconfig`, never `wdutil` or `sudo`, and never prompts for a password. Top talkers use `nettop` the same way — if a system process isn't visible to your user, netdebug just says "unavailable" instead of escalating.
+- **Self-contained page.** The dashboard HTML has zero external URLs — no CDN, no web fonts, no `<link>`, no `url()`. Charts are inline SVG, and anything user-facing is written with `textContent`, never `innerHTML`.
 
 ## Configuration
 
-netdebug runs with **no config file at all** (sane defaults, read-only, current
-network). To tune it, copy `config.example.json` to `config.json` and pass
-`--config config.json`. See [examples/](examples/) and
-[config.example.json](config.example.json) for the full field set.
+You don't need a config file — netdebug runs fine on its defaults. To tweak things, copy `config.example.json` to `config.json` and pass `--config config.json`. The example file lists every option.
 
-## Scope & honest caveats
+## Good to know
 
-- **macOS / Apple Silicon only.** It relies on macOS command output.
-- **Read-only / observational.** It measures and reports; it does not change your
-  network configuration.
-- **macOS redacts some radio detail.** Without Location permission macOS hides
-  the SSID and BSSID; netdebug shows link *state* honestly and lets you label the
-  network for the dashboard/report (`--ssid`, or `ssid_label` in config).
-- **Top-talkers visibility is per-user.** Some system processes may need elevated
-  rights to attribute — netdebug will not escalate to get them.
+- **macOS on Apple Silicon.** It reads macOS command output, so it's Mac-only.
+- **It only looks, never touches.** No network settings are changed.
+- **macOS hides some radio details.** Without Location permission, macOS redacts your SSID and BSSID. netdebug still reports link state honestly, and you can label your network with `--ssid` (or `ssid_label` in config).
+- **Top talkers are per-user.** Some system processes need admin rights to identify, and netdebug won't escalate to get them.
 
-## Documentation
+## Learn more
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — design, invariants, guard tests,
-  and a file-by-file map for contributors.
-- [CHANGELOG.md](CHANGELOG.md) — the development history by phase.
-- [examples/](examples/) — common invocations and sanitized sample output.
-- [scripts/wifilog.sh](scripts/wifilog.sh) — companion script for post-hoc
-  macOS Wi-Fi *log* forensics (see [scripts/README.md](scripts/README.md)).
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how it's built, the invariants, and a file-by-file map for contributors.
+- [CHANGELOG.md](CHANGELOG.md) — what landed, by phase.
+- [examples/](examples/) — common commands and sample output.
+- [scripts/wifilog.sh](scripts/wifilog.sh) — a companion script for digging through macOS Wi-Fi *logs* after the fact (see [scripts/README.md](scripts/README.md)).
 
-## Tests
+## Building and testing
 
 ```sh
 go build ./...
@@ -213,10 +154,8 @@ go vet ./...
 go test ./...
 ```
 
-Unit tests are table-driven over every macOS-output parser and all the pure
-decision logic; they run offline with no network access. A set of guard tests
-enforces the loopback-only and self-contained-HTML invariants.
+Tests are table-driven over every macOS-output parser and all the decision logic, and they run offline — no network needed. A set of guard tests keeps the loopback-only and self-contained-HTML promises honest.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Adam Guyot.
+MIT — free to use, change, and share. See [LICENSE](LICENSE). Copyright (c) 2026 Adam Guyot.

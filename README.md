@@ -5,7 +5,6 @@
 </p>
 
 [![CI](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml/badge.svg)](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/MonkeyIsNull/netdebug)](https://goreportcard.com/report/github.com/MonkeyIsNull/netdebug)
 ![Go version](https://img.shields.io/github/go-mod/go-version/MonkeyIsNull/netdebug)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Platform: macOS (Apple Silicon)](https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-lightgrey.svg)

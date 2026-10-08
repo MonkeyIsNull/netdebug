@@ -23,10 +23,10 @@ Ok, so this project was developed because I was getting constantly kicked off my
 
 ## WTF Does it do?
 
-Run one command and netdebug opens a dashboard on `127.0.0.1`. It watches your throughput, signal, reachability, the Wi-Fi airspace around you, and which apps are using the network — and it keeps a running history. So when something goes wrong (add slowdown, a 2am drop, the band-steer that tanked your call), you can see exactly *when* and *why* instead of guessing.
+Netdebug opens a dashboard on `127.0.0.1`. It watches your throughput, signal, reachability, the Wi-Fi airspace around you, and which apps are using the network — and it keeps a running history. So when something goes wrong (congestion, slowdown, a 2am drop, the band-steer that tanked your call), you can see exactly *when* and *why* instead of guessing.
 
 
-- **No sudo, ever.** netdebug only runs password-free macOS tools. It never asks for admin rights — which is also what lets it run quietly at login.
+- **No sudo, ever.** netdebug only runs password-free macOS tools. 
 - **Loopback only.** The dashboard is served on `127.0.0.1` and nowhere else. There's no option to put it on your network.
 - **One small binary, no dependencies.** Pure Go standard library. The dashboard is a single self-contained page — no CDN, no web fonts, no outside requests.
 - **Read-only.** It measures and reports. It never changes your network settings.

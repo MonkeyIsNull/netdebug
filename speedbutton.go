@@ -224,10 +224,11 @@ func guardedSpeedClient(streams int) *http.Client {
 // The ok-aware wrappers below flip these so a 429-throughout run reports ok:false +
 // "rate-limited (HTTP 429)", never a bogus measured 0.
 type speedTally struct {
-	ok200    int64 // count of 200 responses that yielded body bytes
-	non200   int64 // count of non-200 responses (429/403/…)
-	lastCode int64 // last non-200 status observed
-	errCount int64 // count of client.Do/transport errors (request never saw an HTTP status)
+	ok200      int64 // count of 200 responses that yielded body bytes
+	non200     int64 // count of non-200 responses (429/403/…)
+	lastCode   int64 // last non-200 status observed
+	errCount   int64 // count of client.Do/transport errors (request never saw an HTTP status)
+	retryAfter int64 // 1 if any non-200 carried a Retry-After header (explicit back-off ask)
 
 	// lastErr holds the text of the most recent transport error (a string, so NOT
 	// atomic-safe like the counters). Multiple stream goroutines write it, so it is
@@ -261,13 +262,21 @@ func (st *speedTally) download(ctx context.Context, client *http.Client, url str
 		}
 		resp, err := client.Do(req)
 		if err != nil {
-			st.recordErr(err)
+			// A window-end cancellation (ctx done) is NORMAL termination, not a server
+			// failure — never record it, or a healthy stream whose in-flight request is
+			// aborted at the window edge would be mislabeled a transport error.
+			if ctx.Err() == nil {
+				st.recordErr(err)
+			}
 			sleepCtx(ctx, 100*time.Millisecond)
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
 			atomic.AddInt64(&st.non200, 1)
 			atomic.StoreInt64(&st.lastCode, int64(resp.StatusCode))
+			if resp.Header.Get("Retry-After") != "" {
+				atomic.StoreInt64(&st.retryAfter, 1)
+			}
 			io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 			sleepCtx(ctx, 250*time.Millisecond)
@@ -314,13 +323,24 @@ func (st *speedTally) upload(ctx context.Context, client *http.Client, url strin
 		// rate-limited), never as "unreachable".
 		resp, err := client.Do(req)
 		if err != nil {
-			st.recordErr(err)
+			// A window-end cancellation (ctx done) is NORMAL termination for the long
+			// streaming upload, not a server failure — never record it. The whole reason
+			// the button's upload leg looked broken was that this ONE streaming POST never
+			// completes a 200 inside the short window; it is torn down by the window-end
+			// cancel, and that benign error must not pollute the tally (onDemandSpeed keys
+			// upload success off MEASURED throughput, see speedLegErr).
+			if ctx.Err() == nil {
+				st.recordErr(err)
+			}
 			sleepCtx(ctx, 100*time.Millisecond)
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
 			atomic.AddInt64(&st.non200, 1)
 			atomic.StoreInt64(&st.lastCode, int64(resp.StatusCode))
+			if resp.Header.Get("Retry-After") != "" {
+				atomic.StoreInt64(&st.retryAfter, 1)
+			}
 		} else {
 			atomic.AddInt64(&st.ok200, 1)
 		}
@@ -372,10 +392,21 @@ func tallyErr(st *speedTally, what string) string {
 	}
 	if atomic.LoadInt64(&st.non200) > 0 {
 		code := atomic.LoadInt64(&st.lastCode)
-		if code == http.StatusTooManyRequests {
-			return what + ": rate-limited by server (HTTP 429)"
+		retryAfter := atomic.LoadInt64(&st.retryAfter) > 0
+		switch {
+		case code == http.StatusTooManyRequests:
+			// The signature rate-limit — name it explicitly so the panel tells the user
+			// WHY the run failed and that retrying later is the remedy.
+			return what + ": rate-limited by server (HTTP 429) — try again in a bit"
+		case code == http.StatusServiceUnavailable && retryAfter:
+			// 503 + Retry-After is an explicit "I'm overloaded, back off" — a rate-limit
+			// in spirit, so it gets the same try-again framing, distinct from a bare 503.
+			return what + ": server busy / rate-limited (HTTP 503) — try again in a bit"
+		case code >= 500:
+			return fmt.Sprintf("%s: server error (HTTP %d)", what, code)
+		default:
+			return fmt.Sprintf("%s: server returned HTTP %d", what, code)
 		}
-		return fmt.Sprintf("%s: server returned HTTP %d", what, code)
 	}
 	if atomic.LoadInt64(&st.errCount) > 0 {
 		st.mu.Lock()
@@ -393,6 +424,23 @@ func tallyErr(st *speedTally, what string) string {
 		}
 	}
 	return what + ": no data received (no response and no transport error recorded)"
+}
+
+// speedLegErr decides one leg's (download/upload) honest outcome, folding in the
+// MEASURED throughput. The UPLOAD leg's single long streaming POST does NOT complete a
+// full 200 inside the short reduced-load window — it is torn down by the window-end
+// cancel — so "did we see a 200?" is the WRONG success test for upload (it is why the
+// button's upload leg always reported failure). The right test is: did real bytes flow
+// AND did the server not reject us? If so, it is a legitimate measurement, window-edge
+// cancellation notwithstanding. Any server rejection (non-200: 429/5xx/…) still wins, so
+// a rate-limit is surfaced even when a little data slipped through. With no throughput
+// and no clean 200, fall back to tallyErr's evidence-first classification (HTTP status,
+// then transport-error cause). PURE given the tally + a measured number.
+func speedLegErr(st *speedTally, measuredMbps float64, what string) string {
+	if measuredMbps > 0 && atomic.LoadInt64(&st.non200) == 0 {
+		return "" // real throughput, no server rejection => success
+	}
+	return tallyErr(st, what)
 }
 
 // onDemandSpeed is the production on-demand runner (the speedRunner seam default) and
@@ -448,11 +496,11 @@ func onDemandSpeed(ctx context.Context, cfg Config, custom customTarget) OnDeman
 		return OnDemandSpeedResult{Result: r, Target: target, OK: false, Err: "speed test aborted (timed out or cancelled)"}
 	}
 
-	if msg := tallyErr(&dt, "download"); msg != "" {
+	if msg := speedLegErr(&dt, r.DownloadMbps, "download"); msg != "" {
 		return OnDemandSpeedResult{Result: r, Target: target, OK: false, Err: msg}
 	}
 	if doUpload {
-		if msg := tallyErr(&ut, "upload"); msg != "" {
+		if msg := speedLegErr(&ut, r.UploadMbps, "upload"); msg != "" {
 			return OnDemandSpeedResult{Result: r, Target: target, OK: false, Err: msg}
 		}
 	}

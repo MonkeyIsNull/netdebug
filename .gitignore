@@ -1,0 +1,28 @@
+# Compiled binary (built with `go build -o netdebug .`)
+/netdebug
+netdebug-smoke
+
+# Go test / build artifacts
+*.test
+*.out
+
+# Point-in-time probe reports (--out, default ./net-tests)
+/net-tests/
+
+# User's real local config (ship config.example.json instead)
+/config.json
+
+# macOS unified Wi-Fi log captures (scripts/wifilog.sh writes here)
+/wifi-logs/
+*.log
+
+# Persistent history / journal data (JSONL buckets, outage + roam journals)
+*.jsonl
+
+# macOS cruft
+.DS_Store
+
+# Editor / scratch
+*.swp
+*~
+/scratch/

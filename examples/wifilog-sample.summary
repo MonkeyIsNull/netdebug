@@ -1,0 +1,49 @@
+==================== WIFI SNAPSHOT ====================
+Generated: Thu Jan  1 14:19:26 EST 2026
+Interface: en0
+Window:    1-hour block, 3h ago  (2026-01-01 10:18:09 -> 2026-01-01 11:18:09)
+
+---- system_profiler (current association) ----
+          Current Network Information:
+            MyNetwork:
+              PHY Mode: 802.11ac
+              Channel: 157 (5GHz, 80MHz)
+              Country Code: US
+              Network Type: Infrastructure
+              Security: WPA2 Personal
+              Signal / Noise: -67 dBm / -92 dBm
+              Transmit Rate: 480
+              MCS Index: 9
+
+---- ifconfig en0 ----
+	ether aa:bb:cc:dd:ee:ff
+	inet 10.0.0.128 netmask 0xffffff00 broadcast 10.0.0.255
+	status: active
+
+############################################################
+#   WHAT YOUR WI-FI ACTUALLY DID
+############################################################
+
+Window captured : 2026-01-01 10:18:09  ->  2026-01-01 11:18:08   (interface en0)
+Channel         : 157 (5GHz, 80MHz)
+Security        : WPA2 Personal
+Signal at end   : -67 dBm / -92 dBm
+Interface       : status: active
+
+RESULT: 2 disconnect/reconnect event(s) happened during this window.
+
+  Sequence: healthy link -> disassociation -> driver re-available ->
+  Auto-Join/roam evaluation (84) -> association restart
+  (2) -> re-associated. Join-state changes: 4.
+  Disconnect moment(s) inside the window:
+    - 2026-01-01 10:29:22
+    - 2026-01-01 11:00:43
+
+Most recent disconnect on record : 2026-01-01 11:00:43
+
+WHY IT LEFT (signal vs roam threshold)
+  Signal when it last left : -69 dBm
+  Roam trigger threshold   : -75 dBm
+
+(This is sanitized sample output. Real SSIDs, MAC/BSSID and non-private IPs have
+been replaced with placeholders: MyNetwork, aa:bb:cc:dd:ee:ff, 10.0.0.x.)

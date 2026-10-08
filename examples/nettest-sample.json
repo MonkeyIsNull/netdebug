@@ -1,0 +1,45 @@
+[
+  {
+    "network": "MyNetwork",
+    "ssid": "MyNetwork",
+    "joined": true,
+    "band": "5 GHz",
+    "channel": "157/80",
+    "rssi": -58,
+    "ip": "10.0.0.128",
+    "gateway": "10.0.0.1",
+    "dhcp_router": "10.0.0.1",
+    "route_table": "Destination        Gateway            Flags               Netif Expire\ndefault            10.0.0.1           UGScg                 en0",
+    "checks": [
+      { "name": "dhcp", "pass": true, "detail": "IPv4 = \"10.0.0.128\"" },
+      { "name": "route", "pass": true, "detail": "installed gateway=\"10.0.0.1\" via \"en0\"; DHCP-advertised router=\"10.0.0.1\"" },
+      { "name": "gateway_ping", "pass": true, "detail": "0% loss, avg 2.1 ms" },
+      { "name": "internet_ping:1.1.1.1", "pass": true, "detail": "0% loss, avg 14.0 ms" },
+      { "name": "internet_ping:8.8.8.8", "pass": true, "detail": "0% loss, avg 18.6 ms" },
+      { "name": "dns:dhcp:example.com", "pass": true, "detail": "example.com -> 93.184.216.34" },
+      { "name": "dns:1.1.1.1:example.com", "pass": true, "detail": "example.com -> 93.184.216.34" },
+      { "name": "http:http://captive.apple.com/hotspot-detect.html", "pass": true, "detail": "got expected Success page" },
+      { "name": "http:https://www.apple.com", "pass": true, "detail": "status 200" },
+      { "name": "signal", "pass": true, "detail": "SNR avg 38 dB, RSSI avg -58 dBm", "kind": "advisory" }
+    ],
+    "diagnosis": "HEALTHY: all layers passed — DHCP, routing, gateway, internet, DNS, and HTTP.",
+    "signal": {
+      "polls": 3,
+      "samples": 3,
+      "rssi_min": -60,
+      "rssi_avg": -58,
+      "rssi_max": -56,
+      "rssi_jitter": 1.6,
+      "snr_min": 36,
+      "snr_avg": 38,
+      "snr_max": 40,
+      "snr_jitter": 1.6,
+      "rate_min": 400,
+      "rate_avg": 433,
+      "rate_max": 480,
+      "rate_jitter": 32.7,
+      "phy": "802.11ac",
+      "channel": "157/80"
+    }
+  }
+]

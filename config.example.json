@@ -1,0 +1,18 @@
+{
+  "interface": "",
+  "restore_to": "MyNetwork",
+  "settle_seconds": 8,
+  "repeat": 1,
+  "networks": [
+    { "name": "MyNetwork",    "ssid": "MyNetwork",    "password_from_keychain": true },
+    { "name": "MyNetwork-5G", "ssid": "MyNetwork-5G", "password_from_keychain": true }
+  ],
+  "public_ips":  ["1.1.1.1", "8.8.8.8"],
+  "dns_servers": ["dhcp", "1.1.1.1"],
+  "dns_names":   ["apple.com", "cloudflare.com"],
+  "http_checks": [
+    "http://captive.apple.com/hotspot-detect.html",
+    "https://www.apple.com"
+  ],
+  "ping_count": 3
+}

@@ -18,7 +18,10 @@
 
 **Monitor and debug your Wifi via the cli or in your browser.**
 
-Ok, so this project was developed because I was getting constantly kicked off my home wifi and though there HAD to be a better way to debug this garbage. And none of the damn Mac tools are, frankly, worth a shit. So, here ya go. Have fun with it.
+Ok, so this project was developed because I was getting constantly kicked off my home wifi and thought there HAD to be a better way to debug this garbage. And none of the damn Mac tools are, frankly, worth a shit. So, here ya go. Have fun with it.
+
+
+## WTF Does it do?
 
 Run one command and netdebug opens a dashboard on `127.0.0.1`. It watches your throughput, signal, reachability, the Wi-Fi airspace around you, and which apps are using the network — and it keeps a running history. So when something goes wrong (add slowdown, a 2am drop, the band-steer that tanked your call), you can see exactly *when* and *why* instead of guessing.
 

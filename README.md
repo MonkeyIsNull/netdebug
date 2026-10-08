@@ -5,6 +5,7 @@
 </p>
 
 [![CI](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml/badge.svg)](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/MonkeyIsNull/netdebug)](https://github.com/MonkeyIsNull/netdebug/releases/latest)
 ![tests](https://img.shields.io/badge/tests-711%20passing-brightgreen)
 ![Go version](https://img.shields.io/github/go-mod/go-version/MonkeyIsNull/netdebug)
 ![dependencies](https://img.shields.io/badge/dependencies-none%20(stdlib%20only)-brightgreen)

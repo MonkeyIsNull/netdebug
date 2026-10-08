@@ -5,9 +5,15 @@
 </p>
 
 [![CI](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml/badge.svg)](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml)
+![tests](https://img.shields.io/badge/tests-711%20passing-brightgreen)
 ![Go version](https://img.shields.io/github/go-mod/go-version/MonkeyIsNull/netdebug)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Platform: macOS (Apple Silicon)](https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-lightgrey.svg)
+![dependencies](https://img.shields.io/badge/dependencies-none%20(stdlib%20only)-brightgreen)
+![sudo](https://img.shields.io/badge/sudo-not%20required-brightgreen)
+![platform](https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-lightgrey)
+![status](https://img.shields.io/badge/status-active-brightgreen)
+[![last commit](https://img.shields.io/github/last-commit/MonkeyIsNull/netdebug)](https://github.com/MonkeyIsNull/netdebug/commits/main)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-orange)](https://github.com/MonkeyIsNull/netdebug/issues)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **See what your Mac's Wi-Fi and network are really doing — live, in your browser, with no sudo and no setup.**
 
@@ -164,6 +170,10 @@ go vet       # static checks
 ```
 
 Tests are table-driven over every macOS-output parser and all the decision logic, and they run offline — no network needed. A set of guard tests keeps the loopback-only and self-contained-HTML promises honest.
+
+## Contributing
+
+Issues and pull requests are welcome. Found a bug or have an idea? Open an issue. Want to send a change? Fork, make it, and open a PR — please run `gofmt` and `go test` first (CI checks gofmt, `go vet`, build, and tests on macOS).
 
 ## License
 

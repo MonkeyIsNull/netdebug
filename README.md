@@ -16,18 +16,18 @@
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-orange)](https://github.com/MonkeyIsNull/netdebug/issues)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**See what your Mac's Wi-Fi and network are really doing — live, in your browser, with no sudo and no setup.**
+**Monitor and debug your Wifi via the cli or in your browser.**
 
-Run one command and netdebug opens a dashboard on `127.0.0.1`. It watches your throughput, signal, reachability, the Wi-Fi airspace around you, and which apps are using the network — and it keeps a running history. So when something goes wrong (a slowdown, a 2am drop, the band-steer that tanked your call), you can see exactly *when* and *why* instead of guessing.
+Ok, so this project was developed because I was getting constantly kicked off my home wifi and though there HAD to be a better way to debug this garbage. And none of the damn Mac tools are, frankly, worth a shit. So, here ya go. Have fun with it.
 
-It's deliberately boring and safe:
+Run one command and netdebug opens a dashboard on `127.0.0.1`. It watches your throughput, signal, reachability, the Wi-Fi airspace around you, and which apps are using the network — and it keeps a running history. So when something goes wrong (add slowdown, a 2am drop, the band-steer that tanked your call), you can see exactly *when* and *why* instead of guessing.
+
 
 - **No sudo, ever.** netdebug only runs password-free macOS tools. It never asks for admin rights — which is also what lets it run quietly at login.
 - **Loopback only.** The dashboard is served on `127.0.0.1` and nowhere else. There's no option to put it on your network.
 - **One small binary, no dependencies.** Pure Go standard library. The dashboard is a single self-contained page — no CDN, no web fonts, no outside requests.
 - **Read-only.** It measures and reports. It never changes your network settings.
 
-macOS on Apple Silicon.
 
 ## Install
 
@@ -57,7 +57,7 @@ Open **http://127.0.0.1:8099/** in your browser. If that port's taken, netdebug 
 
 ![netdebug dashboard](docs/screenshots/dashboard.png)
 
-## What the dashboard shows
+## Dashboard
 
 <img src="images/nullicorn_connected.png" align="right" width="190" alt="nullicorn beside a healthy netdebug readout: connected, 12ms, 0% loss, all good">
 
@@ -77,7 +77,7 @@ Two optional extras when you serve:
 - `--alerts` — native macOS notifications when you drop, get band-steered, or your call quality tanks.
 - `--throttle-watch` — an occasional, rate-limit-friendly download sample to catch peak-hour ISP throttling.
 
-## Checking one network at a time
+## Command line options
 
 <img src="images/nullicorn_detective.png" align="right" width="190" alt="nullicorn detective with a magnifying glass inspecting PING, LATENCY, DNS, PACKETS">
 
@@ -111,7 +111,7 @@ Each of these runs once, prints to your terminal, and exits — no server:
 
 See [examples/](examples/) for a fuller tour with sample output.
 
-## Run it all day (login agent)
+## Run it all day
 
 <img src="images/nullicorn_outage.png" align="right" width="190" alt="nullicorn frowning at a misbehaving router — catch the drops that happen while you are away">
 
@@ -126,7 +126,7 @@ Want netdebug always on? Install it as a per-user login agent — no root, just 
 
 It installs to `~/Library/LaunchAgents/com.cobenian.netdebug.plist` and logs to `~/Library/Logs/netdebug/netdebug.log` (which doesn't rotate, so trim it now and then). Point it at a stable binary path like `/usr/local/bin/netdebug` — it will refuse a throwaway `go run` path on purpose.
 
-## Where history lives
+## Where the history lives
 
 netdebug folds samples into buckets on disk so your charts survive restarts:
 
@@ -136,7 +136,7 @@ netdebug folds samples into buckets on disk so your charts survive restarts:
 
 The outage and roam journals sit alongside as append-only JSONL.
 
-## The safety promises, in detail
+## Wtf (in more detail)
 
 - **Loopback only.** The server binds `127.0.0.1` and re-checks the real socket address after binding, so it can never end up on `0.0.0.0`, `::`, or your LAN. There's no flag to change that, and guard tests enforce it.
 - **No sudo.** It reads the radio with `system_profiler` and `ifconfig`, never `wdutil` or `sudo`, and never prompts for a password. Top talkers use `nettop` the same way — if a system process isn't visible to your user, netdebug just says "unavailable" instead of escalating.
@@ -146,7 +146,7 @@ The outage and roam journals sit alongside as append-only JSONL.
 
 You don't need a config file — netdebug runs fine on its defaults. To tweak things, copy `config.example.json` to `config.json` and pass `--config config.json`. The example file lists every option.
 
-## Good to know
+## Some stuff that's probably important, or not.
 
 - **macOS on Apple Silicon.** It reads macOS command output, so it's Mac-only.
 - **It only looks, never touches.** No network settings are changed.

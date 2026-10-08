@@ -1,5 +1,9 @@
 # netdebug
 
+<p align="center">
+  <img src="images/nullicorn_main.png" width="300" alt="netdebug mascot — a cyber-unicorn with a Wi-Fi-signal horn, a waveform earpiece, and an RJ45 cable tail">
+</p>
+
 [![CI](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml/badge.svg)](https://github.com/MonkeyIsNull/netdebug/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/MonkeyIsNull/netdebug)](https://goreportcard.com/report/github.com/MonkeyIsNull/netdebug)
 ![Go version](https://img.shields.io/github/go-mod/go-version/MonkeyIsNull/netdebug)
@@ -47,9 +51,9 @@ Open **http://127.0.0.1:8099/** in your browser. If that port's taken, netdebug 
 
 ![netdebug dashboard](docs/screenshots/dashboard.png)
 
-> No screenshot yet? `docs/screenshots/dashboard.png` is the slot for it — see [docs/screenshots/](docs/screenshots/) for how to grab one from a running dashboard.
-
 ## What the dashboard shows
+
+<img src="images/nullicorn_connected.png" align="right" width="190" alt="nullicorn beside a healthy netdebug readout: connected, 12ms, 0% loss, all good">
 
 The live dashboard (`--serve`) is the heart of netdebug. It refreshes every second and puts everything on one page:
 
@@ -68,6 +72,8 @@ Two optional extras when you serve:
 - `--throttle-watch` — an occasional, rate-limit-friendly download sample to catch peak-hour ISP throttling.
 
 ## Checking one network at a time
+
+<img src="images/nullicorn_detective.png" align="right" width="190" alt="nullicorn detective with a magnifying glass inspecting PING, LATENCY, DNS, PACKETS">
 
 Besides the live dashboard, netdebug can run a single bottom-up health check of whatever network you're on — DHCP → route → gateway → internet → DNS → web — and tell you the first thing that's broken (that's your problem):
 
@@ -100,6 +106,8 @@ Each of these runs once, prints to your terminal, and exits — no server:
 See [examples/](examples/) for a fuller tour with sample output.
 
 ## Run it all day (login agent)
+
+<img src="images/nullicorn_outage.png" align="right" width="190" alt="nullicorn frowning at a misbehaving router — catch the drops that happen while you are away">
 
 Want netdebug always on? Install it as a per-user login agent — no root, just your own session:
 
@@ -141,6 +149,8 @@ You don't need a config file — netdebug runs fine on its defaults. To tweak th
 
 ## Learn more
 
+<img src="images/nullicorn_laptop.png" align="right" width="190" alt="nullicorn coding on a laptop with the GitHub logo">
+
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how it's built, the invariants, and a file-by-file map for contributors.
 - [CHANGELOG.md](CHANGELOG.md) — what landed, by phase.
 - [examples/](examples/) — common commands and sample output.
@@ -149,9 +159,9 @@ You don't need a config file — netdebug runs fine on its defaults. To tweak th
 ## Building and testing
 
 ```sh
-go build ./...
-go vet ./...
-go test ./...
+go build     # compile the binary
+go test      # run the tests (they run offline — no network needed)
+go vet       # static checks
 ```
 
 Tests are table-driven over every macOS-output parser and all the decision logic, and they run offline — no network needed. A set of guard tests keeps the loopback-only and self-contained-HTML promises honest.

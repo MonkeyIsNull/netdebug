@@ -27,10 +27,8 @@ jobs:
           fi
 
       - name: go vet
-        run: go vet ./...
-
+        run: go vet
       - name: build
-        run: go build ./...
-
+        run: go build
       - name: test
-        run: go test ./...
+        run: go test

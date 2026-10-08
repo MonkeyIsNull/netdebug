@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -184,8 +185,23 @@ func measureStream(ctx context.Context, client *http.Client, streams, seconds in
 	defer cancel()
 
 	var counter int64
+	// JOIN the workers before returning (via wg) so the caller observes a SETTLED
+	// stream. This matters for the on-demand button's ok-aware workers (speedbutton.go):
+	// the upload worker issues ONE long streaming POST per goroutine that does NOT
+	// complete within the short window, so its 200/non-200/transport-error is recorded
+	// only once client.Do returns AFTER the window-end cancel. Without the join,
+	// onDemandSpeed read the upload tally while it was still empty and reported a bogus
+	// "no response and no transport error recorded" on EVERY run. Joining also closes a
+	// goroutine leak on the --speed path. Workers exit promptly on cancel (every loop is
+	// `for ctx.Err() == nil` and any in-flight request is aborted by the cancelled ctx),
+	// so the wait adds only the time for those in-flight requests to unwind.
+	var wg sync.WaitGroup
+	wg.Add(streams)
 	for i := 0; i < streams; i++ {
-		go worker(ctx, client, url, &counter)
+		go func() {
+			defer wg.Done()
+			worker(ctx, client, url, &counter)
+		}()
 	}
 
 	sleepCtx(ctx, 1*time.Second) // warm-up (ramp to full rate); not sampled
@@ -200,6 +216,7 @@ func measureStream(ctx context.Context, client *http.Client, streams, seconds in
 		prev = cur
 	}
 	cancel()
+	wg.Wait() // join workers so a tally-recording worker has FINISHED before we return
 	avg, min, max, _ = speedStats(samples)
 	return avg, min, max, samples
 }

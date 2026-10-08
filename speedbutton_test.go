@@ -48,6 +48,14 @@ func TestValidateSpeedTarget(t *testing.T) {
 		// A non-literal hostname that would REBIND is accepted here (pre-screen only) —
 		// the dial-time guard refuses it. Prove the pure screen passes a plain name.
 		{"hostname accepted (dial-time gates rebind)", "https://totally-legit.example/path", false},
+		// The DEFAULT Cloudflare targets (DefaultConfig) MUST pass the pre-screen: these
+		// are exactly the URLs the button's default run and the documented custom examples
+		// use, so a regression that rejected them would make every default run fail at the
+		// validator. (The default run does not even call validateSpeedTarget — only custom
+		// mode does — but pinning these keeps the allowlist honest for the custom path too.)
+		{"cloudflare default down", "https://speed.cloudflare.com/__down?bytes=50000000", false},
+		{"cloudflare default up", "https://speed.cloudflare.com/__up", false},
+		{"cloudflare default latency", "https://speed.cloudflare.com/__down?bytes=0", false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -227,15 +235,17 @@ func TestTallyErrClassification(t *testing.T) {
 		}
 	}
 
-	// (c) a non-200 wins over any recorded error: the HTTP-code message.
+	// (c) a non-200 wins over any recorded error: the HTTP-code message. A 429 is named
+	// as a rate-limit with a try-again cue (the panel must say WHY, per the error-
+	// visibility requirement), not a bare status number.
 	{
 		var st speedTally
 		st.recordErr(errors.New("connection reset by peer")) // also present, but status wins
 		atomic.AddInt64(&st.non200, 1)
 		atomic.StoreInt64(&st.lastCode, int64(http.StatusTooManyRequests))
 		msg := tallyErr(&st, "upload")
-		if !strings.Contains(msg, "429") {
-			t.Errorf("non200 429: want HTTP 429 message, got %q", msg)
+		if !strings.Contains(msg, "429") || !strings.Contains(msg, "rate-limited") || !strings.Contains(msg, "try again") {
+			t.Errorf("non200 429: want rate-limited/try-again/429 message, got %q", msg)
 		}
 	}
 	{
@@ -245,6 +255,39 @@ func TestTallyErrClassification(t *testing.T) {
 		msg := tallyErr(&st, "upload")
 		if !strings.Contains(msg, "403") {
 			t.Errorf("non200 403: want HTTP 403 message, got %q", msg)
+		}
+	}
+	// (c') 503 WITH a Retry-After header => treated as an explicit back-off / rate-limit
+	// (server busy), distinct from a bare 503 which is a generic server error.
+	{
+		var st speedTally
+		atomic.AddInt64(&st.non200, 1)
+		atomic.StoreInt64(&st.lastCode, int64(http.StatusServiceUnavailable))
+		atomic.StoreInt64(&st.retryAfter, 1)
+		msg := tallyErr(&st, "download")
+		if !strings.Contains(msg, "503") || !strings.Contains(msg, "rate-limited") || !strings.Contains(msg, "try again") {
+			t.Errorf("503+Retry-After: want rate-limited/try-again/503 message, got %q", msg)
+		}
+	}
+	{
+		var st speedTally // bare 503 (no Retry-After) => generic server error, NOT rate-limit framing
+		atomic.AddInt64(&st.non200, 1)
+		atomic.StoreInt64(&st.lastCode, int64(http.StatusServiceUnavailable))
+		msg := tallyErr(&st, "download")
+		if !strings.Contains(msg, "503") || !strings.Contains(msg, "server error") {
+			t.Errorf("bare 503: want generic server-error message, got %q", msg)
+		}
+		if strings.Contains(msg, "try again") {
+			t.Errorf("bare 503 must not use the rate-limit try-again framing: %q", msg)
+		}
+	}
+	{
+		var st speedTally // a generic 5xx surfaces as a server error with the code
+		atomic.AddInt64(&st.non200, 1)
+		atomic.StoreInt64(&st.lastCode, int64(http.StatusBadGateway))
+		msg := tallyErr(&st, "download")
+		if !strings.Contains(msg, "502") || !strings.Contains(msg, "server error") {
+			t.Errorf("502: want server-error message with code, got %q", msg)
 		}
 	}
 
@@ -264,6 +307,64 @@ func TestTallyErrClassification(t *testing.T) {
 		msg := tallyErr(&st, "upload")
 		if strings.Contains(msg, "unreachable") {
 			t.Errorf("empty tally must not claim unreachable: %q", msg)
+		}
+	}
+}
+
+// TestSpeedLegErr pins the per-leg outcome that fixes the button: the UPLOAD leg's one
+// long streaming POST never completes a full 200 inside the short window, so success
+// MUST key off MEASURED throughput, not "saw a 200". A leg that pushed real bytes with
+// NO server rejection is a success even with zero recorded 200s; a server rejection
+// (429/5xx) still wins and is surfaced; no throughput + no clean response falls back to
+// the honest transport-error classification.
+func TestSpeedLegErr(t *testing.T) {
+	// (a) THE REGRESSION: bytes flowed (mbps>0), but the streaming request never
+	// recorded a 200/non-200/error (it was torn down at the window edge). Pre-fix this
+	// returned the bogus "no response ..." fallback; it MUST now be success.
+	{
+		var st speedTally // empty: no ok200, no non200, no errCount
+		if msg := speedLegErr(&st, 30.7, "upload"); msg != "" {
+			t.Errorf("measured upload with empty tally must be success, got %q", msg)
+		}
+	}
+	// (b) a measured leg that ALSO saw a server rejection surfaces the rejection (a
+	// rate-limit must not be masked just because a little data slipped through).
+	{
+		var st speedTally
+		atomic.AddInt64(&st.non200, 1)
+		atomic.StoreInt64(&st.lastCode, int64(http.StatusTooManyRequests))
+		msg := speedLegErr(&st, 12.0, "upload")
+		if !strings.Contains(msg, "429") {
+			t.Errorf("measured leg with a 429 must surface the rate-limit, got %q", msg)
+		}
+	}
+	// (c) zero throughput + a connect failure => unreachable (unchanged honesty).
+	{
+		var st speedTally
+		st.recordErr(errors.New("dial tcp 1.2.3.4:443: connect: connection refused"))
+		msg := speedLegErr(&st, 0, "upload")
+		if !strings.Contains(msg, "unreachable") {
+			t.Errorf("no throughput + connect failure => unreachable, got %q", msg)
+		}
+	}
+	// (d) a clean 200 with zero measured mbps (tiny/odd rounding) is still success.
+	{
+		var st speedTally
+		atomic.AddInt64(&st.ok200, 1)
+		if msg := speedLegErr(&st, 0, "download"); msg != "" {
+			t.Errorf("a clean 200 must be success even at 0 mbps, got %q", msg)
+		}
+	}
+}
+
+// TestDefaultConfigSpeedTargetsValidate proves the shipped DefaultConfig speed URLs all
+// pass the SSRF pre-screen — a guard against a future config/allowlist drift that would
+// make the default button run fail at validation.
+func TestDefaultConfigSpeedTargetsValidate(t *testing.T) {
+	c := DefaultConfig()
+	for _, u := range []string{c.SpeedDownURL, c.SpeedUpURL, c.SpeedLatencyURL} {
+		if _, err := validateSpeedTarget(u); err != nil {
+			t.Errorf("DefaultConfig speed URL %q must pass validateSpeedTarget, got %v", u, err)
 		}
 	}
 }

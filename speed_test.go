@@ -1,9 +1,39 @@
 package main
 
 import (
+	"context"
 	"math"
+	"net/http"
+	"sync/atomic"
 	"testing"
+	"time"
 )
+
+// TestMeasureStreamJoinsWorkers is the root-cause regression for the on-demand speed
+// button: measureStream used to return the instant the window closed, WITHOUT waiting
+// for its worker goroutines to finish. The button's ok-aware upload worker records its
+// outcome only when its long streaming request returns — which is AFTER the window-end
+// cancel — so onDemandSpeed read the tally while it was still empty and reported a bogus
+// failure on EVERY run. This test proves measureStream now JOINS its workers: a worker
+// that records only after it observes ctx cancellation MUST have recorded by the time
+// measureStream returns.
+func TestMeasureStreamJoinsWorkers(t *testing.T) {
+	var recorded int64
+	// This worker mimics the real upload worker's shape: it blocks (as if mid-request)
+	// until the window-end cancel, then records its outcome — exactly the ordering that
+	// exposed the missing join.
+	worker := func(ctx context.Context, _ *http.Client, _ string, _ *int64) {
+		<-ctx.Done()                      // "request" unblocks only when the window closes
+		time.Sleep(10 * time.Millisecond) // a touch of unwind latency, as a real Do has
+		atomic.AddInt64(&recorded, 1)
+	}
+	// seconds=0 so the measurement window is just the 1s warm-up — keeps the test quick
+	// while still exercising the full cancel+join path.
+	measureStream(context.Background(), nil, 3, 0, worker, "http://unused.invalid/")
+	if got := atomic.LoadInt64(&recorded); got != 3 {
+		t.Fatalf("measureStream returned before its 3 workers finished: recorded=%d, want 3 (workers were not joined)", got)
+	}
+}
 
 func TestMbps(t *testing.T) {
 	// 100 MB in 8 s = 100e6*8 bits / 8 s = 100 Mbit/s... check: bytes*8/1e6/sec
